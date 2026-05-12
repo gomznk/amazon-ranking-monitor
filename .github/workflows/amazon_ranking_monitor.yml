@@ -1,0 +1,45 @@
+name: Amazon Ranking Monitor
+
+on:
+  workflow_dispatch:
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 依存パッケージのインストール
+        run: pip install -r requirements.txt
+
+      - name: seen_rankings.json を復元
+        uses: actions/cache/restore@v4
+        with:
+          path: seen_rankings.json
+          key: seen-rankings-${{ github.run_id }}
+          restore-keys: |
+            seen-rankings-
+
+      - name: 監視商品CSVを復元
+        run: echo "${{ secrets.ASIN_CSV }}" | base64 -d > "ASIN カテゴリ.csv"
+
+      - name: Amazon売れ筋ランキング監視を実行
+        run: python amazon_ranking_monitor.py
+        env:
+          ASANA_TOKEN: ${{ secrets.ASANA_TOKEN }}
+          ASSIGNEE_EMAIL: ${{ secrets.ASSIGNEE_EMAIL }}
+          PROJECT_GID: ${{ secrets.PROJECT_GID }}
+          SECTION_GID: ${{ secrets.SECTION_GID }}
+
+      - name: seen_rankings.json を保存
+        uses: actions/cache/save@v4
+        with:
+          path: seen_rankings.json
+          key: seen-rankings-${{ github.run_id }}
